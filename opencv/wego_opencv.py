@@ -1,4 +1,4 @@
-
+#-*- coding: utf-8 -*-
 
 ####### bitwise_and 연습 #######
 # import cv2
@@ -66,8 +66,184 @@
 #     cv2.destroyAllWindows()
 
 
-########## ??? ###########
+########## image thrersholding ###########
 
-import cv2
-import numpy as np
+# thresholding 임계값 정하는 것
 
+############ bitwise operation ############
+
+############ Geometric Transformation ############
+
+# import cv2
+# import numpy as np
+
+
+# img = cv2.imread('/home/autosun/Downloads/picture/opencv_logo.png')
+
+##### 확대 축소 #####
+# 행: height 열 : width
+# height, width = img.shape[:2]
+
+# # 이미지 축소
+# shrink = cv2.resize(img,None,fx=0.5,fy = 0.5, interpolation = cv2.INTER_AREA)
+
+# # manual size 지정
+# zoom1 = cv2.resize(img,(width*2, height*2),interpolation=cv2.INTER_CUBIC)
+
+# # 배수 size 지정
+# zoom2 = cv2.resize(img,None, fx=2,fy=2,interpolation=cv2.INTER_CUBIC)
+
+# while True:
+#     cv2.imshow('Original',img)
+#     cv2.imshow('shrink',shrink)
+#     cv2.imshow('zoom1',zoom1)
+#     cv2.imshow('zoom2',zoom2)
+    
+#     if cv2.waitKey(0) & 0xff == 27:
+#         break
+
+# cv2.destroyAllWindows()
+
+####### translation #######
+
+# rows, cols = img.shape[0:2]
+
+# # 변환 행렬, x축으로 10, y축으로 20 이동
+# M = np.float32([[1,0,30],[0,1,60]])
+
+# dst = cv2.warpAffine(img,M,(cols,rows))
+# cv2.imshow('original',img)
+# cv2.imshow('translation',dst)
+
+# cv2.waitKey(0)
+# cv2.destroyAllWindows()
+
+############ image Smoothing ############
+
+# import cv2
+# import numpy as np
+
+# ###### image blurring ######
+# img = cv2.imread("/home/autosun/Downloads/picture/mauntain.jpg")
+# img = cv2.resize(img,None,fx = 3,fy = 3,interpolation=cv2.INTER_LINEAR)
+# cv2.namedWindow("image")
+# cv2.imshow('image',img)
+# cv2.waitKey(0)
+
+# def nothing(x):
+#     pass
+
+# cv2.createTrackbar('k','image',0,50,nothing)
+
+# while True:
+#     k = cv2.getTrackbarPos('k','image')
+
+#     if k == 0:
+#         k = 1
+    
+#     kernel = np.ones((k,k),np.float32)/(k**2)  # 커널은 행렬이다.
+#     dst = cv2.filter2D(img,-1,kernel)
+#     cv2.imshow('image',dst)
+#     if cv2.waitKey(1) & 0xFF == 27:
+#         break
+# cv2.destroyAllWindows()
+
+############ Morphological Transformation ############
+
+############ image Gradient ############
+
+############ image pyramid ############
+
+############ image contours ############
+
+############ image histogram ############
+
+############ Hough Transformation ############
+
+######## hough lines ########
+
+# import cv2
+# import numpy as np
+
+# def nothing(x):
+#     pass
+
+
+# img = cv2.imread("/home/autosun/Downloads/picture/chessboard2.jpg",cv2.IMREAD_COLOR)
+# img_original = img.copy()
+# img_gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+
+# cv2.namedWindow("image")
+# cv2.createTrackbar('min',"image",0,255,nothing)
+# cv2.createTrackbar('max',"image",255,512,nothing)
+
+# while True:
+
+#     min_value = cv2.getTrackbarPos("min","image")
+#     max_value = cv2.getTrackbarPos("max","image")
+
+#     img_Edges = cv2.Canny(img_gray,min_value,max_value)    
+#     lines = cv2.HoughLines(img_Edges,1,np.pi/180,90) #이 방법도 있고 단 모든 점에서 찾는거라 좀 오래 걸릴수가 있음 houghlinesp도 있다
+    
+    
+#     for i in range(len(lines)):
+#         for rho,theta in lines[i]:
+#             a = np.cos(theta)
+#             b = np.sin(theta)
+#             x0 = a*rho
+#             y0 = b*rho
+#             x1 = int(x0 + 1000*(-b))
+#             y1 = int(y0 + 1000*(a))
+#             x2 = int(x0 - 1000*(-b))
+#             y2 = int(y0 - 1000*(a))
+    
+#             cv2.line(img,(x1,y1),(x2,y2),(0,0,255),2)
+
+#     res = np.vstack((img_original,img))
+#     cv2.imshow("image",res)
+#     if cv2.waitKey(1) & 0xFF == 27:
+#         break
+
+# cv2.destroyAllWindows()
+
+###### hough linesp #######
+# import cv2
+# import numpy as np
+
+# def nothing(x):
+#     pass
+
+
+# img = cv2.imread("/home/autosun/Downloads/picture/chessboard2.jpg",cv2.IMREAD_COLOR)
+# img_original = img.copy()
+# img_gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+
+# cv2.namedWindow("image")
+# cv2.createTrackbar('threshold',"image",50,255,nothing)
+# cv2.createTrackbar('minLineLength',"image",50,150,nothing)
+# cv2.createTrackbar('maxLineGap',"image",5,30,nothing)
+# cv2.createTrackbar('min',"image",50,255,nothing)
+# cv2.createTrackbar("max","image",150,512,nothing)
+
+# while True:
+#     img = img_original.copy()
+#     min_value = cv2.getTrackbarPos("min","image")
+#     max_value = cv2.getTrackbarPos("max","image")
+#     threshold = cv2.getTrackbarPos("threshold","image")
+#     minLineLength = cv2.getTrackbarPos("minLineLength","image")
+#     maxLineGap = cv2.getTrackbarPos("maxLineGap","image")
+
+#     img_Edges = cv2.Canny(img_gray,min_value,max_value)
+#     lines = cv2.HoughLinesP(img_Edges,1,np.pi/360,threshold,minLineLength,maxLineGap)    
+    
+#     for i in range(len(lines)):        
+#         for x1,y1,x2,y2 in lines[i] :
+#             cv2.line(img,(x1,y1),(x2,y2),(0,0,255),3)
+
+#     #res = np.vstack((img_original,img))
+#     cv2.imshow('canny',img_Edges)
+#     cv2.imshow("image",img)
+#     if cv2.waitKey(1) & 0xFF == 27:
+#         break
+
+# cv2.destroyAllWindows()
