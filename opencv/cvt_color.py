@@ -30,15 +30,15 @@
 import cv2
 import numpy as np
 
-img = cv2.imread('/home/autosun/Downloads/picture/mauntain.jpg')
+img = cv2.imread('/home/autosun/Downloads/picture/hsl_top.jpg')
 hsv = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
 
 cv2.namedWindow("BGR",cv2.WINDOW_NORMAL)
 cv2.namedWindow("HSV",cv2.WINDOW_NORMAL)
 cv2.namedWindow("RESULT",cv2.WINDOW_NORMAL)
-deg = 360/255
-lower_Color = np.array([deg*60,0,0])
-upper_Color = np.array([deg*180,255,255])
+deg = 255/360
+lower_Color = np.array([deg*0,0,0])
+upper_Color = np.array([deg*360,255,255])
 
 # hsv 영역에서 원하는 부분만 뽑아낸 거임
 mask = cv2.inRange(hsv, lower_Color, upper_Color)
@@ -50,7 +50,7 @@ cv2.imshow("RESULT",result)
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
-cv2.destroy
+
 
 
 
