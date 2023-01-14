@@ -40,27 +40,30 @@ rospy.init_node("sub_test")
 rate = rospy.Rate(0.3)
 
 speed_accel = Float64()
-x = -2.26 # -2.26~2.26
-#speed_km = (1062.333479 * x) + 88.278849              # x가 커질수록 정확해짐
-speed_km = (1164.251442*x) -28.85558                   # x가 작을수록 정확해짐
+angle = Float64()
+
+angle = 0  # -19.5 ~ 19.5 입력하면 됨 시뮬 자동차랑 각도 맞춤
+angle = ( angle + 19.5) / 39 
+
+speed = 1.0 # -2.26~2.26 입력하면 됨 
+speed = (speed + 134.223278) / 1404.7027199
 # 소수점 6자리를 구했으나 정확한 값이 아니라 오차가 있음
 
+# if speed >= 1.3 :
+#     #speed = (1062.333479 * speed) + 88.278849              # x가 커질수록 정확해짐
+#     speed = (speed - 88.278849) / 1062.333479
+#     0.000941324x -0.830990 = y
+# elif 0.3 <= speed < 1.3:
+#     #speed = (1164.251442*speed) -28.85558                   # x가 작을수록 정확해짐
+#     speed = (speed - 0.024786) / 0.0008589 
+
 def data(msg):
-    #print("EgoVehicleStatus : ",msg)       
-    #print("car.velocity.x : ", msg.velocity.x) 
-
-    # if msg.velocity.x < 1:
-    #     pub.publish(speed_km)
-    #     #pub.publish(1170)
-
-    #     #speed += 10
-    # elif msg.velocity.x == 1:        
-    #     print("그만")
-    # elif msg.velocity.x > 1 :
-    #     print("허걱")
-    pub.publish(speed_km)
-    print("speed : {}, car.velocity.x : {} ".format(speed_km, msg.velocity.x))
-    pub_angle.publish(0.5)
+    
+    pub.publish(speed)
+    pub_angle.publish(angle)
+    #print("angle : ", angle)
+    print("speed : {}, car.velocity.x : {} ".format(speed, msg.velocity.x))
+   
 
     #rate.sleep()
 
