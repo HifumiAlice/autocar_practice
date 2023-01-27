@@ -9,7 +9,6 @@ from sensor_msgs.msg import Image, CompressedImage
 from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import Float64
 
-import matplotlib.pyplot as plt
 
 class StopLane():
 
@@ -43,48 +42,48 @@ class StopLane():
         under_mask = cv2.getPerspectiveTransform(src_under,dst_under)
         wrap_image = cv2.warpPerspective(cv2_image,under_mask,(width,height)) 
 
-        # 정지선 인식
+        #정지선 인식
         if self.stop_mode == 0:
             self.detect_stopline(wrap_image,127)
-        #elif self.stop_mode == 1:
-        #self.detect_stopline(wrap_image,127)
+        # elif self.stop_mode == 1:
+        #     self.detect_stopline(wrap_image,127)
 
-        # under
-        # try:
-        #     self.pubcam1.publish(self.cv_bridge.cv2_to_imgmsg(self.image_roi))            
-        # except CvBridgeError as e:
-        #     print("publish error")
-        #     print(e)
-        # try:
-        #     self.pubcam2.publish(self.cv_bridge.cv2_to_imgmsg(wrap_image,"rgb8"))            
-        # except CvBridgeError as e:
-        #     print("publish error")
-        #     print(e)
-
-        #cv2.waitKey(1)             
-
-
+        #under
+        try:
+            self.pubcam1.publish(self.cv_bridge.cv2_to_imgmsg(self.image_roi))            
+        except CvBridgeError as e:
+            print("publish error")
+            print(e)
+        try:
+            self.pubcam2.publish(self.cv_bridge.cv2_to_imgmsg(wrap_image,"rgb8"))            
+        except CvBridgeError as e:
+            print("publish error")
+            print(e)
+        cv2.imshow("cv2_image",cv2_image)
+        cv2.imshow("wrap_image",wrap_image)
+        cv2.waitKey(1)            
    
     def detect_stopline(self,frame,threshold_value): 
-        L= frame[650:720,400:600]
+        #print(frame.shape)
+        L= frame[480:580,300:700] #60000 #[600:720,300:700]  # 픽셀 : 48000
         H,L,S = cv2.split(cv2.cvtColor(L,cv2.COLOR_BGR2HLS))
         _,self.L_roi = cv2.threshold(L,threshold_value,255,cv2.THRESH_BINARY)   ### 흰색 차선 찾기 좋음 즉 정지선 구분하기 좋다
-        self.image_roi = self.L_roi#[500:620,400:600]  # 픽셀 : 14000 
+        self.image_roi = self.L_roi 
         # cv2.imshow("frame",frame)
         # cv2.imshow("L",L)
-        # cv2.imshow("self.image_roi",self.image_roi)
+        
+        cv2.imshow("self.image_roi",self.image_roi)
 
-        if cv2.countNonZero(self.image_roi) > 10000:
-            
+        if cv2.countNonZero(self.image_roi) > 28000: #28000:            
             self.stop_mode = 1
             self.pub_speed.publish(0)
-            print(cv2.countNonZero(self.image_roi))
+            
+            print("stopline")
         else:
             print("not stopline")
             self.pub_speed.publish(500)
-
+        print(cv2.countNonZero(self.image_roi))
         # 픽셀값 구하는 코드 지워도 됨
-        self.img_show("Original", self.image_roi)
         print('이미지 전체 픽셀 개수 : {}'.format(self.image_roi.size))
         
     
@@ -92,40 +91,6 @@ class StopLane():
     def CamShutdown(self):
         print("Cam is dead!")
 
-    # 픽셀값 구하는 코드 지워도 됨
-    def img_show(self,title='image', img=None, figsize=(8 ,5)):
-        plt.figure(figsize=figsize)
-    
-        if type(img) == list:
-            if type(title) == list:
-                titles = title
-            else:
-                titles = []
-    
-                for i in range(len(img)):
-                    titles.append(title)
-    
-            for i in range(len(img)):
-                if len(img[i].shape) <= 2:
-                    rgbImg = cv2.cvtColor(img[i], cv2.COLOR_GRAY2RGB)
-                else:
-                    rgbImg = cv2.cvtColor(img[i], cv2.COLOR_BGR2RGB)
-    
-                plt.subplot(1, len(img), i + 1), plt.imshow(rgbImg)
-                plt.title(titles[i])
-                plt.xticks([]), plt.yticks([])
-    
-            plt.show()
-        else:
-            if len(img.shape) < 3:
-                rgbImg = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-            else:
-                rgbImg = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    
-            plt.imshow(rgbImg)
-            plt.title(title)
-            plt.xticks([]), plt.yticks([])
-            plt.show()
     
 
 if __name__ == "__main__":
