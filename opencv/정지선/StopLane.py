@@ -2,6 +2,8 @@
 
 # -*- coding:utf-8 -*-
 
+# 정지선 찾기
+
 import rospy
 import numpy as np
 import cv2
@@ -75,18 +77,16 @@ class StopLane():
         cv2.imshow("self.image_roi",self.image_roi)
 
         if cv2.countNonZero(self.image_roi) > 28000: #28000:            
-            self.stop_mode = 1
-            self.pub_speed.publish(0)
-            
+            #self.stop_mode = 1
+            #self.pub_speed.publish(0)
             print("stopline")
         else:
             print("not stopline")
-            self.pub_speed.publish(500)
-        print(cv2.countNonZero(self.image_roi))
+            #self.pub_speed.publish(500)
+
+        #print(cv2.countNonZero(self.image_roi))
         # 픽셀값 구하는 코드 지워도 됨
-        print('이미지 전체 픽셀 개수 : {}'.format(self.image_roi.size))
-        
-    
+        #print('이미지 전체 픽셀 개수 : {}'.format(self.image_roi.size))
    
     def CamShutdown(self):
         print("Cam is dead!")

@@ -2,6 +2,8 @@
 
 # -*- coding : utf-8 -*-
 
+# 자율주행으로 정지선 인식, 정지 후 신호등 인식하기 초록불일 때 직진하는 코드 임시로 작성  # wego 시뮬레이터 22.R.4.0 버전
+
 import rospy
 import numpy as np
 import cv2

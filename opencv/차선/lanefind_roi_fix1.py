@@ -2,6 +2,8 @@
 
 # -*- coding:utf-8 -*-
 
+####### 허프변환을 통한 차선 구하기 roi를 사용했음 차선이 발견 안될 경우 화면 끝에 선 하나 그리는 중임
+
 import rospy
 import cv2
 import numpy as np

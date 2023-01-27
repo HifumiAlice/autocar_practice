@@ -2,6 +2,8 @@
 
 # -*- coding:utf-8 -*-
 
+# 허프변환을 통한 차선 구하기 로이를 적용함
+
 import rospy
 import cv2
 import numpy as np
