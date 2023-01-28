@@ -1,0 +1,4 @@
+int32 dist_x_left
+int32 dist_y_left
+int32 dist_x_right
+int32 dist_y_right

@@ -1,0 +1,8 @@
+<launch>
+    <node name="img_converter" type="img_converter.py" pkg="km_race" output="screen" />
+    <node name="cvt_image" type="cvtImage.py" pkg="km_race" output="screen" />
+    <node name="roi_detection" type="roi_lane_detection.py" pkg="km_race" output="screen" />
+    <node name="lidar_clustering" type="lidar_clustering.py" pkg="km_race" output="log" />
+    <!-- <node name="controller" type="control.py" pkg="km_race" output="screen" /> -->
+    <include file="$(find wego)/launch/teleop.launch" />
+</launch>
