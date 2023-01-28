@@ -45,7 +45,8 @@ class Cam_All():
         self.prev_l_mv = MovingAverage(15)
         self.prev_flag = False
         
-        self.Trackbar = False  # 트랙바
+        # 트랙바
+        self.Trackbar = False
 
         self.angle = Float64()
         self.speed = Float64()
@@ -56,22 +57,22 @@ class Cam_All():
         rospy.spin()
 
     def callback(self,data):
+        # ##### 트랙바 생성 ####
+        # if self.Trackbar == False:
+        #     cv2.namedWindow("Trackbar",cv2.WINDOW_NORMAL)
+        #     ## 이미지 변환 값 트랙바
+        #     cv2.createTrackbar("CanThre1","Trackbar",100,255,nothing)
+        #     cv2.createTrackbar("CanThre2","Trackbar",123,255,nothing)
+        #     cv2.createTrackbar("blurThre1","Trackbar",27,50,nothing)
+        #     #cv2.createTrackbar("blurThre1","Trackbar",5,100,nothing)
 
-        ##### 트랙바 생성 ####
-        if self.Trackbar == False:
-            cv2.namedWindow("Trackbar",cv2.WINDOW_NORMAL)
-            ## 이미지 변환 값 트랙바
-            cv2.createTrackbar("CanThre1","Trackbar",100,255,nothing)
-            cv2.createTrackbar("CanThre2","Trackbar",123,255,nothing)
-            cv2.createTrackbar("blurThre1","Trackbar",27,50,nothing)
-            #cv2.createTrackbar("blurThre1","Trackbar",5,100,nothing)
-
-            ## 허프 라인 트랙바
-            cv2.createTrackbar("Hough_Thre","Trackbar",15,150,nothing)
-            cv2.createTrackbar("Hough_MinLen","Trackbar",15,150,nothing)
-            cv2.createTrackbar("Hough_MinGap","Trackbar",3,150,nothing)
+        #     ## 허프 라인 트랙바
+        #     cv2.createTrackbar("Hough_Thre","Trackbar",15,150,nothing)
+        #     cv2.createTrackbar("Hough_MinLen","Trackbar",15,150,nothing)
+        #     cv2.createTrackbar("Hough_MinGap","Trackbar",3,150,nothing)
             
-            self.Trackbar = True
+        #     self.Trackbar = True
+        #cv2.waitKey(1)  #### 트랙바 쓸 때 waitkey 안써주면 안나타남
 
         try:
             cv2_image = self.cv_bridge.compressed_imgmsg_to_cv2(data)
@@ -83,33 +84,31 @@ class Cam_All():
         self.lanefind(cv2_image)      # 차선 인식 함수
 
         # 정지선 인식
-        if self.stop_mode == "None":
+        if self.stop_mode != "stopline":
             self.stopline(cv2_image)      # 정지선 인식 함수
-        elif self.stop_mode == "stopline":
-            pass
-        
-        # 신호등 인식
-       
-        if self.light_mode == "None" and self.stop_mode == "stopline":
+    
+        # 신호등 인식       
+        if self.light_mode != "green_light":
             #print("정지선 찾자")
             self.light(cv2_image)         # 신호등 인식 함수
-        elif self.light_find == "green_light":
-            pass
-        
+
+
+
         # 각도 및 속도 설정
         if self.angle < 0.5:
-            self.speed = 1400 * self.angle + 300
+            self.speed = 1400 * self.angle + 300  # 1000 / 300
         else:
-            self.speed = -1400 * self.angle +1700
+            self.speed = -1400 * self.angle +1700 # 1000/300
 
         if self.stop_mode == "stopline":
             self.speed = 0
         
-        if self.light_find == "green_light" :
+        if self.light_mode == "green_light" :
             
             self.speed = 1000
             self.angle = 0.5
-        print(self.light_find)
+
+        print(f"신호등 : {self.light_mode}, 정지선 : {self.stop_mode}")
 
 
         
@@ -121,12 +120,13 @@ class Cam_All():
         self.PubSpeed.publish(self.speed)        
         
         # 이미지 퍼블리쉬
-        self.PubCamUnder.publish(self.cv_bridge.cv2_to_imgmsg(self.image_roi))
+        self.PubCamUnder.publish(self.cv_bridge.cv2_to_imgmsg(self.L_roi))
         self.PubCamline.publish(self.cv_bridge.cv2_to_imgmsg(self.image_line,"rgb8"))
         self.PubCamLight1.publish(self.cv_bridge.cv2_to_imgmsg(self.result_red,"rgb8"))
         self.PubCamLight2.publish(self.cv_bridge.cv2_to_imgmsg(self.result_green,"rgb8"))
     
-    # 정지선 인식
+    ################## 정지선 인식
+    ##################
     def stopline(self,cv2_image):
         #print(self.srcpoint[3])
         src_under = np.float32([self.srcpoint[0],self.srcpoint[1],self.srcpoint[2],self.srcpoint[3]]) # 좌하단, 좌상단, 우상단, 우하단
@@ -134,28 +134,30 @@ class Cam_All():
         under_mask = cv2.getPerspectiveTransform(src_under,dst_under)
         wrap_image = cv2.warpPerspective(cv2_image,under_mask,(self.width,self.height)) 
 
-        L= wrap_image[370:470,300:700] #60000 #[600:720,300:700]  # 픽셀 : 48000
+        L= wrap_image[370:470,300:700] #40000 #[600:720,300:700]  # 픽셀 : 48000
         H,L,S = cv2.split(cv2.cvtColor(L,cv2.COLOR_BGR2HLS))
         _,self.L_roi = cv2.threshold(L,127,255,cv2.THRESH_BINARY)   ### 흰색 차선 찾기 좋음 즉 정지선 구분하기 좋다
         self.image_roi = self.L_roi 
 
         if cv2.countNonZero(self.image_roi) > 28000: #28000:   # 정지선이 인식이 되면 
             self.stop_mode = "stopline"
-            self.stopline = "stopline"
-            print(self.stop_mode)
+            #print(self.stop_mode)
+            #print(cv2.countNonZero(self.image_roi))
         else:
-            print("not stopline")
+            self.stop_mode = "None_stopline"
+            #print("not stopline")
 
-        #print(cv2.countNonZero(self.image_roi))
+        
         # 픽셀값 구하는 코드 지워도 됨
         #print('이미지 전체 픽셀 개수 : {}'.format(self.image_roi.size))
         
 
-    # 신호등 인식
+    ################## 신호등 인식
+    ##################
     def light(self,cv2_image):
         image_hsv = cv2.cvtColor(cv2_image,cv2.COLOR_BGR2HSV)
-        image_hsv_roi = image_hsv[0:200, :] # 신호등 영역만 볼려고 
-        image_roi = cv2_image[0:200, :]     # 신호등 영역만 볼려고
+        image_hsv_roi = image_hsv[0:200, :] # 신호등 영역만 볼려고 --> hsv영역에서 로이한거  
+        image_roi = cv2_image[0:200, :]     # 신호등 영역만 볼려고 --> rgb?영역에서 로이한거 inrage 쓰려니 hsv에서 딴 이미지 크기가 같아야만 한다고 함
       
         ### 색깔 따기
         deg = 180/360
@@ -164,49 +166,52 @@ class Cam_All():
         red_lower = np.array([deg * 0, 100, 80])  # deg * 0, 100,80
         red_upper = np.array([deg * 30, 255, 255])  # deg * 30, 255,255
         mask_red = cv2.inRange(image_hsv_roi,red_lower,red_upper)
-        result_red = cv2.bitwise_and(image_roi,image_roi,mask = mask_red)
-        red_color = result_red.mean()
-        red_color = round(red_color,3)
-        self.result_red = result_red
+        self.result_red = cv2.bitwise_and(image_roi,image_roi,mask = mask_red)
+        red_color = round(self.result_red.mean(),3)
         
         green_lower = np.array([deg * 90, 100, 80])  # deg * 90, 100,80
         green_upper = np.array([deg * 150, 255,255])  # deg * 150, 255,255
         mask_green = cv2.inRange(image_hsv_roi,green_lower,green_upper)
-        result_green = cv2.bitwise_and(image_roi,image_roi,mask = mask_green)
-       
-        green_color = result_green.mean()
-        green_color = round(green_color,3) 
-        self.result_green = result_green
+        self.result_green = cv2.bitwise_and(image_roi,image_roi,mask = mask_green)       
+        green_color = round(self.result_green.mean(),3)  
 
-        if 0.085<= red_color <=0.215 :
-            if 0.150<= green_color <= 0.270:
-                print("좌회전")
-                self.light_find = "left_go"
-                #print("초록색 ",green_color)            
-            else:
-                print("빨간불")
-                self.light_find = "red_light"
-           # print("빨간색 :",red_color)
+        ## 신호등 판별
+        if red_color == 0 and green_color !=0:            ### 빨간색이 안잡히면 초록색만 나오므로 초록불
+            
+            self.light_mode = "green_light"
+            #print("초록불")
 
-        if 0.500<= green_color <= 0.730:   ## 0.500 0.630
-            #print("초록색 ",green_color)
-            self.light_find = "green_light"
-            print("초록불")
+        elif green_color == 0 and red_color != 0:         ### 초록색만 안나오면 빨간불
 
-        print(f"초록색 {green_color}, 빨간색 {red_color}")
+            self.light_mode = "red_light"
+            #print("빨간불")    
+                          
+        elif red_color != 0 and green_color != 0:     ### 둘다 나오면 좌회전
+            
+            self.light_mode = "left_go"
+            #print("좌회전")
 
-    #차선 인식 함수 허프 변환
+        # else:
+        #     #self.light_mode = "yellow_light"
+        #     #print("주황불")
+
+        #print(f"초록색 {green_color}, 빨간색 {red_color}")
+
+    ###################차선 인식 함수 허프 변환
+    ###################
     def lanefind(self,cv2_image):
-        ##### 트랙바에서 값 받아오기
-        CanThre1 = cv2.getTrackbarPos("CanThre1","Trackbar")
-        CanThre2 = cv2.getTrackbarPos("CanThre2","Trackbar")
-        blurThre1 = cv2.getTrackbarPos("blurThre1","Trackbar")
-        if blurThre1 % 2 == 0:
-            blurThre1 -= 1
+        
 
-        Hough_Thre = cv2.getTrackbarPos("Hough_Thre","Trackbar")
-        Hough_MinLen = cv2.getTrackbarPos("Hough_MinLen","Trackbar")
-        Hough_MinGap = cv2.getTrackbarPos("Hough_MinGap","Trackbar")
+        # ##### 트랙바에서 값 받아오기
+        # CanThre1 = cv2.getTrackbarPos("CanThre1","Trackbar")
+        # CanThre2 = cv2.getTrackbarPos("CanThre2","Trackbar")
+        # blurThre1 = cv2.getTrackbarPos("blurThre1","Trackbar")
+        # if blurThre1 % 2 == 0:
+        #     blurThre1 -= 1
+
+        # Hough_Thre = cv2.getTrackbarPos("Hough_Thre","Trackbar")
+        # Hough_MinLen = cv2.getTrackbarPos("Hough_MinLen","Trackbar")
+        # Hough_MinGap = cv2.getTrackbarPos("Hough_MinGap","Trackbar")
     
         #height, width, channel = cv2_image.shape # 720,1280,3
         image_original = cv2_image.copy()
@@ -214,22 +219,21 @@ class Cam_All():
         image_hsv = cv2.cvtColor(cv2_image,cv2.COLOR_BGR2HSV)
         image_gray = cv2.cvtColor(cv2_image,cv2.COLOR_BGR2GRAY)
 
-
         ##### 일반적인 차선 따기
-        image_blur = cv2.GaussianBlur(image_gray,(blurThre1,blurThre1),0)
-        image_edge = cv2.Canny(np.uint8(image_blur),CanThre1,CanThre2)
+        image_blur = cv2.GaussianBlur(image_gray,(27,27),0)   ####blurThre1,blurThre1
+        image_edge = cv2.Canny(np.uint8(image_blur),100,100)  ####CanThre1 CanThre1
         #image_Edgeroi = image_edge[int(height * 50/100):int(height * 100/100),int(width * 0/100): int(width * 100/100)]  # 세로, 가로
 
         # 잘린 화면에서 차선 딴거 원 화면에 그릴려고 변수 만듬
         roi_y = 450
         roi_x = 220
         image_Edgeroi = image_edge[roi_y:720,roi_x:1280-roi_x] #[400:720,:]
-        image_Edgeroi = cv2.Canny(np.uint8(image_Edgeroi),CanThre1,CanThre2)        
+        image_Edgeroi = cv2.Canny(np.uint8(image_Edgeroi),100,123)  #CanThre1 CanThre2       
         #print(image_roi.shape)
         
         ######### 차선 라인 따기
 
-        all_lines = cv2.HoughLinesP(image_Edgeroi,1,np.pi/180,Hough_Thre,Hough_MinLen,Hough_MinGap)
+        all_lines = cv2.HoughLinesP(image_Edgeroi,1,np.pi/180,15,15,1)#Hough_Thre/Hough_MinLen/Hough_MinGap
 
         # for line in all_lines:
         #     #line_img = cv2_image.copy()
