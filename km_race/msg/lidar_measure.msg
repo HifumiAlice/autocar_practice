@@ -1,2 +1,0 @@
-float32 measure_length
-int32 measure_degree
