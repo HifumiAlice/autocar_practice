@@ -1,2 +1,0 @@
-String left_lane
-String right_lane
