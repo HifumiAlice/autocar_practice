@@ -37,6 +37,9 @@ class Cam_lane():
         self.prev_l_mv = MovingAverage(15)
         self.prev_flag = False
 
+        # 좌우 차선 선택
+        self.line_find = "left_line"
+
         self.mv = MovingAverage(5)
         self.pid = PID(0.45,0.00007,0.25)
         rospy.spin()     
