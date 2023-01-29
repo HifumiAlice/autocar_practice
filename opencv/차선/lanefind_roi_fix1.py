@@ -12,7 +12,7 @@ from sensor_msgs.msg import CompressedImage, Image
 from cv_bridge import CvBridge,CvBridgeError
 from std_msgs.msg import Float64
 
-
+from math import *
 class Cam_lane():
 
     def __init__(self):
@@ -91,16 +91,16 @@ class Cam_lane():
         image_edge = cv2.Canny(np.uint8(image_blur),CanThre1,CanThre2)
         #image_Edgeroi = image_edge[int(height * 50/100):int(height * 100/100),int(width * 0/100): int(width * 100/100)]  # 세로, 가로
 
-        # 잘린 화면에서 차선 딴거 원 화면에 그릴려고 변수 만듬
+        #### 잘린 화면에서 차선 딴거 원 화면에 그릴려고 변수 만듬
         roi_y = 450
         roi_x = 220
-        image_Edgeroi = image_edge[roi_y:720,roi_x:1280-roi_x] #[400:720,:]
+        image_Edgeroi = image_edge[roi_y:720,roi_x:1280-roi_x] #[400:720,:] 
         image_Edgeroi = cv2.Canny(np.uint8(image_Edgeroi),CanThre1,CanThre2)        
         #print(image_roi.shape)
         
         ######### 차선 라인 따기
 
-        all_lines = cv2.HoughLinesP(image_Edgeroi,1,np.pi/180,Hough_Thre,Hough_MinLen,Hough_MinGap)
+        all_lines = cv2.HoughLinesP(image_Edgeroi,1,np.pi/180,Hough_Thre,Hough_MinLen,Hough_MinGap)  ## 1차로 주행 하려면 min_gap를 1로 해야 잘됨
 
         # for line in all_lines:
         #     #line_img = cv2_image.copy()
@@ -110,8 +110,9 @@ class Cam_lane():
         #### 차선일 것 같은 기울기 골라내기
         slopes = []
         new_lines = []
+        seta = []
 
-        if type(all_lines) == type(None):
+        if type(all_lines) == type(None):  #### 라인 그릴거 없으면 그냥 넘기기
             pass
         else:
             #if all_lines.all:            
@@ -119,12 +120,23 @@ class Cam_lane():
                 x1, y1, x2, y2 = line[0]
                 if (x2-x1) == 0:
                     slope = 0
+                    deg = 0
                 else:
                     slope = float(y2-y1)/float(x2-x1)
+                    rad = atan(slope) 
+                    deg = rad * 180/pi ## <-- rad값을 deg 값으로 바꾸기
+                    
+                # 기울기가 너무 작은것은 차선에서 배제    상수는 타젠트 세타값임. 세타값을 구하려면 아크탄젠트 상수 python은 라디안으로 사용함, 라디안을 각도로 바꿔서 계산하거나 하면 될거같음
+                # if 0.3333 < abs(slope) : # 상수값으로 차선 골라내기  #0.1은 세타 5.7도 쯤
+                #     #print(slope)
+                #     slopes.append(slope)
+                #     new_lines.append(line[0])               
+                #     seta.append(deg)
                 
-                if 0.1 < abs(slope):
+                if 13 <= abs(deg) :   ### 각도로 차선 골라내기
                     slopes.append(slope)
                     new_lines.append(line[0])               
+                    seta.append(deg)
         
         ##### 좌우 차선 선분 찾기
 
@@ -137,24 +149,29 @@ class Cam_lane():
 
             x1,y1, x2,y2 = Line
 
-            if (slope < 0) and (x2 < (1280-roi_x)/2):
+            if (slope < 0) and (x2 < (1280-roi_x)/2):     ## 가운데 기준으로 왼쪽 차선 구하기
                 left_lines.append([Line.tolist()])
+                #print(f"왼쪽 {j}번쨰 기울기 {slope}")
 
-            elif (slope > 0 ) and (x1 > (1280-roi_x)/2):
+            if (slope > 0 ) and (x1 > (1280-roi_x)/2):  ## 가운데 기준으로 오른쪽 차선 구하기
                 right_lines.append([Line.tolist()])
+                # print(f"오른쪽 {j}번쨰 기울기 {slope}")
+                # print(f"오른쪽 {j}번쨰 각도 {seta[j]}")
+            
+            
 
         ### 좌우 차선 그리기 
         # 왼쪽 차선
-        left_line_count = 0
+        left_line_count = 0 
         for line in left_lines:  #파란색 차선
             #line_img = cv2_image.copy()
             
             if all(line[0]):
                 x1,y1, x2,y2 = line[0]            
-                cv2.line(image_original,(x1+roi_x,y1+roi_y),(x2+roi_x,y2+roi_y),(255,0,0),3)
-                left_line_count += 1
-            else:
-                continue
+                cv2.line(image_original,(x1+roi_x,y1+roi_y),(x2+roi_x,y2+roi_y),(255,0,0),3) ## 그릴거 있으면 이미지에 그리기
+                #left_line_count += 1
+            # else:
+            #     continue
             
         # 오른쪽 차선
         right_line_count = 0
@@ -162,15 +179,14 @@ class Cam_lane():
             #line_img = cv2_image.copy()
             if all(line[0]):
                 x1,y1, x2,y2 = line[0]
-                cv2.line(image_original,(x1+roi_x,y1+roi_y),(x2+roi_x,y2+roi_y),(0,0,255),3)
-                right_line_count +=1
-            else:
-                continue
+                cv2.line(image_original,(x1+roi_x,y1+roi_y),(x2+roi_x,y2+roi_y),(0,0,255),3) ## 그릴거 있으면 이미지에 그리기
+                #right_line_count +=1
+            # else:
+            #     continue
         
-        #### 차선 중에서 대표 직선 구하기
+        ### 차선 중에서 대표 직선 구하기
 
-        ### 왼쪽 대표 직선 구하기
-
+        ## 왼쪽 대표 직선 구하기
         x_sum, y_sum, m_sum = 0.0, 0.0, 0.0
         m_left, b_left = 0.0, 0.0
         size = len(left_lines)
@@ -184,23 +200,22 @@ class Cam_lane():
 
         
         if size == 0:
-            x_avg  = 0
-            y_avg  = 0
-            m_left = 0
-            b_left = 0
+            x_avg  = 0      # 없어도 될거같은데? 
+            y_avg  = 0      # 없어도 될거같은데?
+            m_left = 0      # 없어도 될거같은데?
+            b_left = 0      # 없어도 될거같은데?
         else:
             x_avg = x_sum / (size * 2)
             y_avg = y_sum / (size * 2)
             m_left = m_sum / size
             b_left = y_avg-m_left * x_avg
 
-        if size == 0:
+        if size == 0: ## size가 0이라는 것은 라인을 못찾았다는 것이므로 화면 끝에다 그리기
             x1 = 0
             x2 = 0
-            cv2.line(image_original,(x1,0+roi_y),(x2,roi_y+720-roi_y),(0,255,0),2)
-        else:
+            cv2.line(image_original,(x1,0+roi_y),(x2,roi_y+720-roi_y),(0,255,0),2)  
             
-            
+        else:      ## 0이 아니면 라인을 찾았다는 것이므로 라인에서 차선 그리기                
             x1 = int((0.0 - b_left)/ m_left)
             x2 = int((720-roi_y-b_left)/m_left)
             cv2.line(image_original,(x1+roi_x,0+roi_y),(x2+roi_x,roi_y+720-roi_y),(0,255,0),2)
@@ -220,10 +235,10 @@ class Cam_lane():
             m_sum += float(y2 - y1) / float(x2 - x1)
 
         if size == 0:
-            x_avg   = 0
-            y_avg   = 0
-            m_right = 0
-            b_right = 1280
+            x_avg   = 0         # 없어도 될거같은데?
+            y_avg   = 0         # 없어도 될거같은데?
+            m_right = 0         # 없어도 될거같은데?
+            b_right = 1280      # 없어도 될거같은데?
         else:
             x_avg  = x_sum / (size * 2)
             y_avg  = y_sum / (size * 2)
@@ -251,8 +266,8 @@ class Cam_lane():
             x_left = self.prev_l_mv.get_mm()
             
         else:
-            x_left = int ((y_height-b_left)/m_left)  # y가 400부터 720임 140에서 빼니깐 아래 사각형 그릴때도 참고 해야함
-            print((y_height-b_left)/m_left)
+            x_left = int ((y_height-b_left)/m_left)  # y가 어딘가부터 720임 140에서 빼니깐 아래 사각형 그릴때도 참고 해야함
+            #print((y_height-b_left)/m_left)
         
         if m_right == 0.0:
             x_right = self.prev_r_mv.get_mm()
@@ -261,55 +276,77 @@ class Cam_lane():
         
         self.prev_l_mv.add_sample(x_left)
         self.prev_r_mv.add_sample(x_right)
-        x_center = (x_left + x_right) // 2
+        
 
         
         #### 차선 각도 계산 사각형 그리기?
         y_fix = int(720 - ((720-roi_y) - y_height))
-        cv2.line(image_original,(0,y_fix),(1280,y_fix),(0,255,255),2)
-        cv2.rectangle(image_original,(640-5,y_fix-5),(640+5,y_fix+5),(0,0,255),4)# 원화면에 그린거라 맞음
+        cv2.line(image_original,(0,y_fix),(1280,y_fix),(255,55,255),2)     #### x축의 평행한 직선 그리기 여기축 기준에서 각도 잡을거임  (기준축이라고 하자)
+        cv2.rectangle(image_original,(640-5,y_fix-5),(640+5,y_fix+5),(0,0,255),4) # 카메라의 센터 그리기, 기준축에 x좌표 센터를 그림ㅁ  # 원화면에 그린거라 맞음
         
-        if x_left == 0 and x_right < 1280:
-            
-            x_left = int(x_left)
-            x_right = int(x_right+roi_x)        
-            x_center = int(x_center)
+        
+
+        # if x_left == 0 and x_right < 1280:
+        #     print(1)
+        #     x_left = int(x_left)
+        #     x_right = int(x_right+roi_x)        
+        #     x_center = int(x_center)
             
 
-        elif x_left > 0 and x_right < 1280:
-            x_left = int(x_left+roi_x)
-            x_right = int(x_right+roi_x)        
-            x_center = int(x_center+roi_x)
+        # elif x_left > 0 and x_right < 1280:
+        #     print(2)
+        #     x_left = int(x_left+roi_x)
+        #     x_right = int(x_right+roi_x)        
+        #     x_center = int(x_center+roi_x)
             
-        elif x_left > 0 and x_right == 1280 :
-            x_left = int(x_left+roi_x)
-            x_right = int(x_right)        
-            x_center = int(x_center)
+        # elif x_left > 0 and x_right == 1280 :
+        #     print(3)
+        #     x_left = int(x_left+roi_x)
+        #     x_right = int(x_right)        
+        #     x_center = int(x_center)
 
-            # cv2.rectangle(image_original,(x_left-5,y_fix-5),(x_left+5,y_fix+5),(0,255,0),4)
-            # cv2.rectangle(image_original,(x_right-5,y_fix-5),(x_right+5,y_fix+5),(255,0,255),4)
-            # cv2.rectangle(image_original,(x_center-5,y_fix-5),(x_center+5,y_fix+5),(255,0,0),4)
+        #     # cv2.rectangle(image_original,(x_left-5,y_fix-5),(x_left+5,y_fix+5),(0,255,0),4)
+        #     # cv2.rectangle(image_original,(x_right-5,y_fix-5),(x_right+5,y_fix+5),(255,0,255),4)
+        #     # cv2.rectangle(image_original,(x_center-5,y_fix-5),(x_center+5,y_fix+5),(255,0,0),4)
+        # else:
+        #     print(4)
+        #     x_left = int(x_left)
+        #     x_right = int(x_right)        
+        #     x_center = int(x_center)
+        #     #print(x_center)
+
+        #     #print(y_fix)
+
+        #### 차선 각도 계산 사각형 그리기?
+        if m_left == 0.0: #x_left <= 0:
+            x_left = 0
         else:
-            x_left = int(x_left)
-            x_right = int(x_right)        
-            x_center = int(x_center)
-            #print(x_center)
+            x_left = int(x_left+roi_x)
+            if x_left < 0 :
+                x_left = 0
 
-            #print(y_fix)
-            
-        print(f"왼쪽 : {x_left}, 가운데 : {x_center}, 오른쪽 {x_right}")
-        # print(f"왼쪽 : {x_left}, 가운데 : {x_center}, 오른쪽 {x_right}")
-        cv2.rectangle(image_original,(x_left-5,y_fix-5),(x_left+5,y_fix+5),(0,255,0),4)
-        cv2.rectangle(image_original,(x_right-5,y_fix-5),(x_right+5,y_fix+5),(255,0,255),4)
-        cv2.rectangle(image_original,(x_center-5,y_fix-5),(x_center+5,y_fix+5),(255,0,0),4)
+        if m_right == 0.0: #x_right <= 0:
+            x_right = width
+        else:
+            x_right = int(x_right+roi_x)
+            if x_right > width :
+                x_right = width
+        
+        x_center = (x_left + x_right) // 2
+        # if m_left == 0.0 and m_right == 0.0:
+        #     x_center = int(x_center)
+        # else:
+        #     x_center = int(x_center)
+        
+        
+        cv2.rectangle(image_original,(x_left-5,y_fix-5),(x_left+5,y_fix+5),(0,255,255),4)     #### 왼쪽 사각형 긋기
+        cv2.rectangle(image_original,(x_right-5,y_fix-5),(x_right+5,y_fix+5),(255,255,0),4) #### 오른쪽 사각형 긋기
+        cv2.rectangle(image_original,(x_center-5,y_fix-5),(x_center+5,y_fix+5),(255,0,0),4) #### 센터 사각형 긋기
+
+        #print(f"왼쪽 : {x_left}, 가운데 : {x_center}, 오른쪽 {x_right}")
 
         angle = (x_center-roi_x)/((1280-roi_x*2))
 
-        # 평균값 필터 
-        # self.mv.add_sample(angle)
-        # new_angle = self.mv.get_mm()
-
-        
         if angle < 0.5:
             speed = 1800 * angle + 300
         else:
@@ -338,7 +375,6 @@ class MovingAverage ():
         self.samples = n
         self.data = []
         self.weights = list (range(1, n + 1))
-
     
     def add_sample(self, new_sample):
         if len(self.data) < self.samples:
@@ -355,7 +391,6 @@ class MovingAverage ():
             s += x* self.weights[i]
         
         return float(s) / sum(self.weights[:len(self.data)])
-
 
 def nothing(x):
     pass
