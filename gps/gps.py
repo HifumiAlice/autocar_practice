@@ -6,7 +6,7 @@ import rospy
 from morai_msgs.msg import GPSMessage
 from std_msgs.msg import Float32MultiArray,String,Float64
 from std_msgs.msg import MultiArrayDimension
-from pyproj import Proj
+from pyproj import Proj 
 
 
 class erp_gps():

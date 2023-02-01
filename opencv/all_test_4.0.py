@@ -105,11 +105,13 @@ class Cam_All():
         
         ### 각도 및 속도 설정
         if self.angle < 0.5:
-            #self.speed = 1800 * self.angle + 300
-            self.speed = 1400 * self.angle + 300
+            self.speed = 1800 * self.angle + 300
+            #self.speed = 1400 * self.angle + 300
+            #self.speed = 5400 * self.angle + 300
         else:
-            #self.speed = -1800 * self.angle +2100  # 최대값 1200일떄
-            self.speed = -1400 * self.angle +1700   # 최대값 1000일때
+            self.speed = -1800 * self.angle +2100  # 최대값 1200일떄
+            #self.speed = -1400 * self.angle +1700   # 최대값 1000일때
+            #self.speed = -5400 * self.angle +5700   # 최대값이 3000
 
         if self.stop_mode == "stopline":
             self.speed = 0
@@ -199,11 +201,13 @@ class Cam_All():
             self.light_mode = "left_go"
             #print("좌회전")
 
-        # else:
-        #     self.light_mode = "yellow_light"
-        #     #print("주황불")
+        else:
+            self.light_mode = "yellow_light"
+            #print("주황불")
 
         #print(f"초록색 {green_color}, 빨간색 {red_color}")
+        cv2.imshow("image_roi",image_roi)
+        cv2.waitKey(1)
 
     #####################차선 인식 함수 허프 변환
     def lanefind(self,cv2_image):

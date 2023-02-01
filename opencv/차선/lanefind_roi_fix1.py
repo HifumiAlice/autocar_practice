@@ -40,8 +40,8 @@ class Cam_lane():
 
         # 좌우 차선 선택
         # self.line_find = "left_line"
-        self.line_find = "right_line"        
-        # self.line_find = "None"
+        # self.line_find = "right_line"        
+        self.line_find = "None"
         
 
         rospy.on_shutdown(self.CamShutdown)
@@ -99,8 +99,8 @@ class Cam_lane():
         #image_Edgeroi = image_edge[int(height * 50/100):int(height * 100/100),int(width * 0/100): int(width * 100/100)]  # 세로, 가로
 
         #### 잘린 화면에서 차선 딴거 원 화면에 그릴려고 변수 만듬
-        roi_y = 450
-        roi_x = 220
+        roi_y = 450 # 450 
+        roi_x = 220 # 220
         image_Edgeroi = image_edge[roi_y:720,roi_x:1280-roi_x] #[400:720,:] 
         image_Edgeroi = cv2.Canny(np.uint8(image_Edgeroi),CanThre1,CanThre2)        
         #print(image_roi.shape)
@@ -266,7 +266,7 @@ class Cam_lane():
             self.prev_flat =True
 
 
-        y_height = 140.0  # 사각형 그릴 때 로이랑 일반 카메라랑 위치 맞출려고 추가함
+        y_height = 140.0  # 사각형 그릴 때 로이랑 일반 카메라랑 위치 맞출려고 추가함   --> 로이 y축 위에서부터 아래로 내려감
         if m_left == 0.0:
             x_left = self.prev_l_mv.get_mm()
             
@@ -306,9 +306,9 @@ class Cam_lane():
                 x_right = width
 
         if self.line_find == "left_line":
-            x_center = x_left + 350 
+            x_center = x_left + 350     # +- 상수는 로이x값보다 크면 안됨
         elif self.line_find == "right_line":
-            x_center = x_right  - 250
+            x_center = x_right  - 250   # -250은 sector1에서 나가짐 그 이상은 안나가지는 것 같음 -270은 들어올때 들어와짐
         else:
             x_center = (x_left + x_right) // 2
 
@@ -329,17 +329,18 @@ class Cam_lane():
         #angle = ()
         
 
-        if angle < 0.5:
-            speed = 1800 * angle + 300 # 1200
+        if  0<= angle < 0.5:
+            #speed = 1800 * angle + 300 # 1200
             #speed = 3400 * angle + 300  # 2000
-            #speed = 5400 * angle + 300 # 3000
-        else:
-            speed = -1800 * angle + 2100
+            speed = 5400 * angle + 300 # 3000
+        elif angle <=1:
+            #speed = -1800 * angle + 2100
             #speed = 3400 * angle + 300
-            #speed = -5400 * angle + 5700
-
+            speed = -5400 * angle + 5700
+        else:
+            speed = 300
         #print(new_angle)
-        #print("angle : ",speed)
+        print("angle : ",angle)
         #### publish하기
         self.PubAngle.publish(angle)
         self.PubSpeed.publish(speed)        

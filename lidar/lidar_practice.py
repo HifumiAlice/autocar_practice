@@ -57,53 +57,121 @@ class lidar():
         for i in range(0,len(roi_lidar)):      #self.roi_degree_offset * 2+1) :
             if roi_lidar[i] >= 1.5 :
                 roi_lidar[i] = self.infinity
-            # if i < self.roi_degree_offset:                
-            #     print(f"오른쪽 {self.roi_degree_offset-i:^3d}도 (index {self.roi_degree_offset+i + 240:^3d}) 거리 : {roi_lidar[i]} ")
-            # elif i == self.roi_degree_offset:
-            #     print(f"가운데       (index {0:^3d}) 거리 : {roi_lidar[i]}")
-            # else:
-            #     print(f"왼쪽   {i-self.roi_degree_offset:^3d}도 (index {i - self.roi_degree_offset :^3d}) 거리 : {roi_lidar[i]} ")
+            if i < self.roi_degree_offset:                
+                print(f"오른쪽 {self.roi_degree_offset-i:^3d}도 (index {self.roi_degree_offset+i + 240:^3d}) 거리 : {roi_lidar[i]} ")
+            elif i == self.roi_degree_offset:
+                print(f"가운데       (index {0:^3d}) 거리 : {roi_lidar[i]}")
+            else:
+                print(f"왼쪽   {i-self.roi_degree_offset:^3d}도 (index {i - self.roi_degree_offset :^3d}) 거리 : {roi_lidar[i]} ")
         #print(len(roi_lidar))
         # print(data.ranges[40]) 
         # print(roi_lidar[120]) 
 
-        #### 동적 및 정적 판단
-        speed = 1000
-        angle = 0.5
-        count = []
-        
-        for i in range(len(roi_lidar)):            
-            if roi_lidar[i] != self.infinity:
-                count.append(i)
-                        
-        if len(count) >= 4:                
-            if self.timefind == False:
-                self.previoustime = time.time()
-                self.lencount = len(count)
-                self.timefind = True
+        groupdata = self.grouping(roi_lidar)
 
-        if self.timefind == True:
-            speed = 0
-            self.nexttime = time.time()
-            if self.nexttime - self.previoustime >= 4.0:
-                if self.lencount - len(count) <= 4 :
-                    print("정적")
-                    angle = 0.0
-                    speed = 1000
-                else:
-                    print("동적")
-                    speed = 1000
-                self.timefind = False
+        print(f"그룹된 갯수: {len(groupdata)}")
+        for i in range(len(groupdata)):
+            print("data : ",groupdata[i])
+        # print("다음")
+
+        #### 동적 및 정적 판단
+        # speed = 1000
+        # angle = 0.5
+        # count = []
         
-        print(self.lencount)
+        # if len(groupdata) == 1:
+        #     if self.timefind == False:
+        #         self.previoustime = time.time()
+        #         self.comparedata = groupdata[0]
+        #         print("아아ㅏㅇ",self.comparedata)
+        #         self.timefind = True
+        #     speed = 0
+        #     self.nexttime = time.time()
+        #     if self.nexttime - self.previoustime >= 4.0:
+        #         if abs(len(self.comparedata) - len(groupdata[0])) <= 2:
+        #             print("정적")
+        #             speed = 1000
+        #             angle = 0.0
+        #         else:
+        #             print("동적")
+        #             speed = 1000
+        #         self.timefind = False
         
-        print(f"길이 : {len(count)} 인덱스 : {count}")
+        
+
+        
+        ########## 원래꺼
+        # for i in range(len(roi_lidar)):            
+        #     if roi_lidar[i] != self.infinity:
+        #         count.append(i)
+                        
+        # if len(count) >= 4:                
+        #     if self.timefind == False:
+        #         self.previoustime = time.time()
+        #         self.lencount = len(count)
+        #         self.timefind = True
+
+        # if self.timefind == True:
+        #     speed = 0
+        #     self.nexttime = time.time()
+        #     if self.nexttime - self.previoustime >= 4.0:
+        #         if self.lencount - len(count) <= 4 :
+        #             print("정적")
+        #             angle = 0.0
+        #             speed = 1000
+        #         else:
+        #             print("동적")
+        #             speed = 1000
+        #         self.timefind = False
+        
+        # print(f"길이 : {len(count)} 인덱스 : {count}")
         
         ### publish
-        self.pub.publish(speed)
-        self.pub_angle.publish(angle)
+        # self.pub.publish(speed)
+        # self.pub_angle.publish(angle)
         ##### 동적 및 정적 판단 좀만 다듬으면 될듯
 
+    def grouping(self,data):
+        grouping_obs_flag = False
+        oneObsIdx = []
+        obs_pts = []
+
+        for i in range(len(data)):
+            # if i < len(data)//2:                
+            #     print(f"오른쪽 {len(data)//2-i:^3d}도 (index {len(data)//2+i + 240:^3d}) 거리 : {data[i]} ") #240,320
+            # elif i == len(data)//2:
+            #     print(f"가운데       (index {0:^3d}) 거리 : {data[i]}")
+            # else:
+            #     print(f"왼쪽   {i-len(data)//2:^3d}도 (index {i - len(data)//2 :^3d}) 거리 : {data[i]} ") 
+
+            if (data[i] == self.infinity) or (i == len(data)):  ### 마지막 각도에서 infiny 때문에 인식이 안됨
+                    if grouping_obs_flag:
+                        obs_pts.append(oneObsIdx)
+                        grouping_obs_flag = False
+                        continue
+
+            if grouping_obs_flag == False:  ### grouping의 첫 데이터                
+                if data[i] != self.infinity:
+                    oneObsIdx = []
+                    oneObsIdx.append(i)
+                    obs_dis = data[i]
+                    #print(objectsindex)
+                    grouping_obs_flag = True
+            else:  #grouping를 하고 있는 중
+                ## 다른 물체로 판명되는 경우
+                if abs(obs_dis - data[i]) > 0.10:
+                    obs_pts.append(oneObsIdx)
+                    oneObsIdx = []
+                    oneObsIdx.append(i)
+                else: # 같은 물체인 경우 
+                    oneObsIdx.append(i)                    
+                    #grouping_obs_flag = False                    
+                obs_dis = data[i]
+        
+            
+        
+        return obs_pts
+        
     def lidar_shutdown(self):
         print("Lidar is Dead !!")
 

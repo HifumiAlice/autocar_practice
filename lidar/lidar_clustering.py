@@ -227,7 +227,7 @@ class lidarClustering( ) :
         mgrpData = []
         #filteredData  == [idx, tmp_theta, tmp_degree, _data.ranges[idx]]
         # gdata == [[물체가 찾아 졌을 때 i]* 개별로 판별된 수]
-        print(len(gdata))
+        #print(len(gdata))
         for i in range(len(gdata)) :
             tmpgdata = gdata[i]
             print(f"data: {gdata[i]}")
@@ -250,7 +250,7 @@ class lidarClustering( ) :
             # print(f"temp2: {tmpgdata}")
         
             mgrpData.append(tmpgdata)
-        #print("다음")
+        print("다음")
         return mgrpData
             
 
