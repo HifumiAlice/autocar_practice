@@ -89,10 +89,11 @@ class lidarClustering( ) :
             # 2. Grouping
             groupedData, groupedSpace = self.grouping(filteredData)  # 유효 범위 데이터를 집어넣음
             # rospy.loginfo("[clusteringCB] angle({}), groupedData={}".format(self.MEASURE_ANGLE, groupedData))
-
+            #print("그룹 갯수 : ",len(groupedData))
             mgrpData = self.mergeObs(filteredData, groupedData)
             # rospy.loginfo("[clusteringCB] distance({}), mgrpData={}".format(self.SEARCH_DISTANCE, mgrpData))
-
+            # print("최종 그룹 갯수:",len(mgrpData))
+            print("다음")
             # 3. Analysis & publish
             self.analysis_pub(_data, filteredData, mgrpData, groupedSpace)
         else :
@@ -230,7 +231,7 @@ class lidarClustering( ) :
         #print(len(gdata))
         for i in range(len(gdata)) :
             tmpgdata = gdata[i]
-            print(f"data: {gdata[i]}")
+            #print(f"data: {gdata[i]}")
             # print(f"temp1: {tmpgdata}")
             for j in range(i+1, len(gdata)) :
                 tmp_g0 = filteredData[gdata[i][0]]  ## 그루핑 물체를 찾아낸 첫번째 i값을 집어넣는거
@@ -238,7 +239,7 @@ class lidarClustering( ) :
 
                 idx1_xy = calc_axis_xy(tmp_g0[1], tmp_g0[3], 0, self.SEARCH_DISTANCE) # 세타, 거리, 최소거리, 물체를 찾기 위한 최대거리  --> x,y좌표를 반환 받음
                 idx2_xy = calc_axis_xy(tmp_g1[1], tmp_g1[3], 0, self.SEARCH_DISTANCE) # 세타, 거리, 최소거리, 물체를 찾기 위한 최대거리  --> x,y좌표를 반환 받음
-
+                #print(f"idx1_xy : {idx1_xy},  idx2_xy : {idx2_xy}")
                 distance = calc_distance(idx1_xy, idx2_xy) ## 각각의 물체끼리의 거리를 구함
 
                 if distance > self.SAME_OBS_DEV_LIMIT : ## 구한 거리가 같은 물체의 임계값을 넘어가면 다른 물체가 맞고 아니면 같은 물체에 i값 넣기
@@ -250,7 +251,7 @@ class lidarClustering( ) :
             # print(f"temp2: {tmpgdata}")
         
             mgrpData.append(tmpgdata)
-        print("다음")
+        
         return mgrpData
             
 
@@ -447,7 +448,7 @@ class lidarClustering( ) :
                     leftGroup = i
 
             # rospy.loginfo("leftObs filteredData[{}]={}".format(leftObs, filteredData[leftObs]))
-            rospy.loginfo("no({}), leftobs[{}]={}, rightobs[{}]={}".format(no_obs, leftObs, filteredData[leftObs], rightObs, filteredData[rightObs]))
+            #rospy.loginfo("no({}), leftobs[{}]={}, rightobs[{}]={}".format(no_obs, leftObs, filteredData[leftObs], rightObs, filteredData[rightObs]))
             ## 위에꺼 살려놔야함
 
         else :
