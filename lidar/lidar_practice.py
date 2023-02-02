@@ -30,7 +30,7 @@ class lidar():
         self.roi_degree_offset = 60  ### 라이다 볼 인덱스 값
         self.infinity = float("inf")   ### inf는 뭐 정의가 되어있어 가능하다고 함
         self.search_distance = 1.5
-        self.Same_distance = 0.12
+        self.Same_distance = 0.20
         self.obs_exist_flag = False
 
         ### 동적 정적 판단 변수
@@ -47,7 +47,7 @@ class lidar():
         #### 라이다 데이터 각 요소에 집어 넣기
         # angle_min = data.angle_min                  ### -3.1415927410125732 --> -pi == index 0이 가운데 <-- 정면을 지칭
         # angle_max = data.angle_max                  ### 3.1415927410125732 --> pi == index 0이 가운데 
-        angle_increment = data.angle_increment      #0.01745329238474369 rad --> 0.9999999922536332 deg  몇도씩 증가할건가
+        angle_increment = data.angle_increment      # 0.01745329238474369 rad --> 0.9999999922536332 deg  몇도씩 증가할건가
         # time_incremet = data.time_increment         # 0.0001250000059371814 <-- ???
         # scan_time = data.scan_time                  # 0.04500000178813934  <-- ???
         range_min = data.range_min                  # 0.0  --> 아마도 m 단위 일거임
@@ -90,7 +90,7 @@ class lidar():
             right_roi_lidar.append([i, data.angle_min + i * angle_increment, j, data.ranges[i]]) ## origin index, theta, angle, distance    # 가운데 기준으로 오른쪽은 +angle로 지정
             j -= 1
 
-        roi_lidar = right_roi_lidar + left_roi_lidar
+        roi_lidar = right_roi_lidar + left_roi_lidar  ## origin index, theta, angle, distance
         
         for i in range(len(roi_lidar)):
             if roi_lidar[i][3] > 1.5 :
@@ -102,22 +102,49 @@ class lidar():
                 obs_exist_flag = True
                 
             print(f"{roi_lidar[i][2]}도의 index : {roi_lidar[i][0]}, 거리 : {roi_lidar[i][3]} ")
+        #print("다음")
 
         
         if obs_exist_flag :
-            groupdata = self.grouping(roi_lidar)  ## groupdata는 roi_lidar의 index값만 가지고 있음
+            groupdata = self.grouping(roi_lidar)  
             # print(groupdata[0])
             # print(roi_lidar[10])
             # print(f"그룹된 갯수: {len(groupdata)}")
-            for i in range(len(groupdata)):
-                print(f"data : {groupdata[i]}, 거리 : {roi_lidar[groupdata[i][0]][3]} ")
+            # for i in range(len(groupdata)):
+            #     print(f"data : {groupdata[i]}, 거리 : {roi_lidar[groupdata[i][0]][3]} ")
                 
 
-            mgrpData = self.mergeObs(roi_lidar,groupdata)
-            # print(f"그룹된 갯수: {len(groupdata)}")
+            mgrpData = self.mergeObs(roi_lidar,groupdata)   ## roi index만 받아옴
+            print(f"그룹된 갯수: {len(groupdata)}")
             print("최종 그룹 갯수:",len(mgrpData))
             print(mgrpData)
             print("다음")
+
+
+            #동적 정적
+            # if len(mgrpData):
+            #     if self.timefind == False:
+            #         self.previoustime = time.time()
+            #         self.comparedata = mgrpData[0]
+            #         print("아아ㅏㅇ",self.comparedata)
+            #         self.timefind = True
+            #     speed = 0
+            #     self.nexttime = time.time()
+            #     if self.nexttime - self.previoustime >= 1.0:
+            #         print(f"비교할거 : {self.comparedata}, data : {mgrpData[0]}")
+            #         if abs(len(self.comparedata) - len(mgrpData[0])) <= 2:
+            #             print("정적")
+            #             speed = 1000
+            #             angle = 0.0
+            #         else:
+            #             print("동적")
+            #             speed = 1000
+            #         self.timefind = False
+            #         self.previoustime = self.nexttime 
+            
+            # ### publish
+            # self.pub.publish(speed)
+            # self.pub_angle.publish(angle)
 
         ### 동적 및 정적 판단
         
@@ -125,7 +152,7 @@ class lidar():
         # angle = 0.5
         # count = []
         
-        # if len(groupdata):
+        # if len(mgrpData):
         #     if self.timefind == False:
         #         self.previoustime = time.time()
         #         self.comparedata = groupdata[0]
@@ -221,62 +248,71 @@ class lidar():
                         grouping_obs_flag = False
                         continue
         
-        return obs_pts
+        return obs_pts  ## roi index만 있음 --> 그룹된 roi index
     
     def mergeObs(self, data, gdata) :  # 유효범위 데이터와 그룹핑된 오브젝트를 집어넣음
         mgrpData = []        
-        #data  == [idx, tmp_theta, tmp_degree, _data.ranges[idx]]
+        #data  == [origin idx, theta, tmp_degree, _data.ranges[origin idx]]
         # gdata == [[물체가 찾아 졌을 때 i]* 개별로 판별된 수]
         #print(len(gdata))
         for i in range(len(gdata)) :
             tmpgdata = gdata[i]
-            equalCount = 0
+            equalCount = False
             #print(f"data: {gdata[i]}")
             # print(f"temp1: {tmpgdata}")
             for j in range(i+1, len(gdata)) :
-                tmp_g0 = data[gdata[i][0]]  ## 그루핑 물체를 찾아낸 첫번째 i값을 집어넣는거
+                tmp_g0 = data[gdata[i][-1]]  ## 그루핑 물체를 찾아낸 첫번째 i값을 집어넣는거
                 tmp_g1 = data[gdata[j][0]]  ## 그루핑 물체를 찾아낸 첫번째 i값을 집어넣는거
-
-                idx1_xy = calc_axis_xy(tmp_g0[1], tmp_g0[3], 0, self.search_distance) # 세타, 거리, 최소거리, 물체를 찾기 위한 최대거리  --> x,y좌표를 반환 받음
-                idx2_xy = calc_axis_xy(tmp_g1[1], tmp_g1[3], 0, self.search_distance) # 세타, 거리, 최소거리, 물체를 찾기 위한 최대거리  --> x,y좌표를 반환 받음
-                #print(f"idx1_xy : {idx1_xy},  idx2_xy : {idx2_xy}")
+                #print(f"go : {tmp_g0}, g1 : {tmp_g1}")
+                idx1_xy = calc_axis_xy(tmp_g0[1], tmp_g0[3], 0, self.search_distance) # 세타, 인식된 거리, 최소거리, 물체를 찾기 위한 최대거리  --> x,y좌표를 반환 받음
+                idx2_xy = calc_axis_xy(tmp_g1[1], tmp_g1[3], 0, self.search_distance) # 세타, 인식된 거리, 최소거리, 물체를 찾기 위한 최대거리  --> x,y좌표를 반환 받음
                 distance = calc_distance(idx1_xy, idx2_xy) ## 각각의 물체끼리의 거리를 구함
 
-                if abs(distance) > self.Same_distance : ## 구한 거리가 같은 물체의 임계값을 넘어가면 다른 물체가 맞고 아니면 같은 물체에 i값 넣기
-                    print("여기 들어오니?",distance)
+                if abs(distance) > self.Same_distance : ## 구한 거리가 같은 물체의 임계값을 넘어가면 다른 물체가 맞고 아니면 같은 물체에 i값 넣기 / 거리 0.12m
+                    #print("여기 들어오니?",distance)
                     continue
                 # print("first : ",tmpgdata)
                 tmpgdata = tmpgdata + gdata[j] 
                 # print("second : ",tmpgdata) 
-                
+         
             for k in range(len(mgrpData)):
                 tmp_pop0 = mgrpData[k].copy()
                 tmp_pop1 = tmpgdata.copy()
                 
-                # if len(tmp_pop0) - len(tmp_pop1) >= 0: 
-                #     for q in range(len(tmp_pop1)):
-                #         if (tmp_pop1.pop() == tmp_pop0.pop()) :  
-                #             equalCount += 1       
-                #             pass
-                #         else:
-                            
-                #             break
-                # else:
-                #     for q in range(len(tmp_pop0)):
-                #         if (tmp_pop1.pop() == tmp_pop0.pop()) :    
-                #             equalCount += 1     
-                #             pass
-                #         else:                            
-                #             break
+                for tmp0 in tmp_pop0:
+                    for tmp1 in tmp_pop1:
+                        if tmp0 == tmp1 :
+                            equalCount = True
+                            # print(equalCount)
+                            # print("같은거")
 
-                if tmp_pop0.pop() == tmp_pop1.pop():
-                    equalCount +=1
+            #     # if len(tmp_pop0) - len(tmp_pop1) >= 0: 
+            #     #     for q in range(len(tmp_pop1)):
+            #     #         if (tmp_pop1.pop() == tmp_pop0.pop()) :  
+            #     #             equalCount = True      
+            #     #             pass
+            #     #         else:
+                            
+            #     #             break
+            #     # else:
+            #     #     for q in range(len(tmp_pop0)):
+            #     #         if (tmp_pop1.pop() == tmp_pop0.pop()) :    
+            #     #             equalCount = True     
+            #     #             pass
+            #     #         else:                            
+            #     #             break
+            #     #### 둘의 길이가 다르다던가, pop된 요소만 다른 경우 다른 물체로 인식함
+
+                # if tmp_pop0.pop() == tmp_pop1.pop():  ## 추가할 data가 "하나라도" 같은 data가 있다면 같은 물체 
+                #     equalCount = True
                 # else:
                 #     continue
 
-            #print(tmpgdata)
-            if equalCount == 0 :
-                mgrpData.append(tmpgdata)
+                
+
+            # print(tmpgdata)
+            if not equalCount :
+                mgrpData.append(tmpgdata)  ## roi index --> 진짜로 다른 물체인지 판단한 roi index
 
         return mgrpData
         
