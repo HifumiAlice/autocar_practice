@@ -10,9 +10,10 @@ import numpy as np
 
 from sensor_msgs.msg import CompressedImage, Image
 from cv_bridge import CvBridge,CvBridgeError
-from std_msgs.msg import Float64
-
+from std_msgs.msg import Float64, String
 from math import *
+
+
 class Cam_lane():
 
     def __init__(self):
@@ -40,8 +41,8 @@ class Cam_lane():
 
         # 좌우 차선 선택
         # self.line_find = "left_line"
-        # self.line_find = "right_line"        
-        self.line_find = "None"
+        #self.line_find = "right_line"        
+        # self.line_find = "None"
         
 
         rospy.on_shutdown(self.CamShutdown)
@@ -54,6 +55,7 @@ class Cam_lane():
         ##### 트랙바 생성 ####
         if self.Trackbar == False:
             cv2.namedWindow("Trackbar",cv2.WINDOW_NORMAL)
+            cv2.namedWindow("line",cv2.WINDOW_NORMAL)
             ## 이미지 변환 값 트랙바
             cv2.createTrackbar("CanThre1","Trackbar",100,255,nothing)
             cv2.createTrackbar("CanThre2","Trackbar",123,255,nothing)
@@ -64,6 +66,11 @@ class Cam_lane():
             cv2.createTrackbar("Hough_Thre","Trackbar",15,150,nothing)
             cv2.createTrackbar("Hough_MinLen","Trackbar",15,150,nothing)
             cv2.createTrackbar("Hough_MinGap","Trackbar",3,150,nothing)
+
+            #### right(left) - N의 N값 설정
+            cv2.createTrackbar("N","line",220,400,nothing)
+            # linefide
+            cv2.createTrackbar("linefind","line",0,2,nothing)
             
             self.Trackbar = True
 
@@ -79,6 +86,8 @@ class Cam_lane():
         Hough_MinGap = cv2.getTrackbarPos("Hough_MinGap","Trackbar")
         #blurThre2 = cv2.getTrackbarPos("blurThre2","Trackbar")
 
+        N = cv2.getTrackbarPos("N","line")
+        self.line_find = cv2.getTrackbarPos("linefind","line")
         ##### 이미지 변환하기
         try:
             cv2_image = self.cv_bridge.compressed_imgmsg_to_cv2(data)
@@ -169,10 +178,9 @@ class Cam_lane():
 
         ### 좌우 차선 그리기 
         # 왼쪽 차선
-        
         for line in left_lines:  #파란색 차선
             #line_img = cv2_image.copy()
-            
+    
             if all(line[0]):
                 x1,y1, x2,y2 = line[0]            
                 cv2.line(image_original,(x1+roi_x,y1+roi_y),(x2+roi_x,y2+roi_y),(255,0,0),3) ## 그릴거 있으면 이미지에 그리기
@@ -180,7 +188,6 @@ class Cam_lane():
             #     continue
             
         # 오른쪽 차선
-        
         for line in right_lines: #빨간색 차선
             #line_img = cv2_image.copy()
             if all(line[0]):
@@ -265,7 +272,7 @@ class Cam_lane():
             self.prev_r_mv.add_sample(0)
             self.prev_flat =True
 
-
+        #140
         y_height = 140.0  # 사각형 그릴 때 로이랑 일반 카메라랑 위치 맞출려고 추가함   --> 로이 y축 위에서부터 아래로 내려감
         if m_left == 0.0:
             x_left = self.prev_l_mv.get_mm()
@@ -305,46 +312,54 @@ class Cam_lane():
             if x_right > width :
                 x_right = width
 
-        if self.line_find == "left_line":
-            x_center = x_left + 350     # +- 상수는 로이x값보다 크면 안됨
-        elif self.line_find == "right_line":
-            x_center = x_right  - 250   # -250은 sector1에서 나가짐 그 이상은 안나가지는 것 같음 -270은 들어올때 들어와짐
+        # if self.line_find == "left_line":
+        #     x_center = x_left + N#350     # +- 상수는 로이x값보다 크면 안됨
+        # elif self.line_find == "right_line":
+        #     x_center = x_right  - N#300   # -250은 sector1에서 나가짐 그 이상은 안나가지는 것 같음 -270은 들어올때 들어와짐
+        #     ## 우회전 심하게 하는 곳에서 MinGap = 1, xright-300(+-5)가 젤 적당한거 같다
+        # else:
+        #     x_center = (x_left + x_right) // 2
+
+        if self.line_find == 1:
+            x_center = x_left + N#350     # +- 상수는 로이x값보다 크면 안됨
+        elif self.line_find == 2:
+            x_center = x_right  - N#300   # -250은 sector1에서 나가짐 그 이상은 안나가지는 것 같음 -270은 들어올때 들어와짐
+            ## 우회전 심하게 하는 곳에서 MinGap = 1, xright-300(+-5)가 젤 적당한거 같다
         else:
             x_center = (x_left + x_right) // 2
-
-        # if m_left == 0.0 and m_right == 0.0:
-        #     x_center = int(x_center)
-        # else:
-        #     x_center = int(x_center)
         
         #print(x_center)
         cv2.rectangle(image_original,(x_left-5,y_fix-5),(x_left+5,y_fix+5),(0,255,255),4)     #### 왼쪽 사각형 긋기
         cv2.rectangle(image_original,(x_right-5,y_fix-5),(x_right+5,y_fix+5),(255,255,0),4)   #### 오른쪽 사각형 긋기
         cv2.rectangle(image_original,(x_center-5,y_fix-5),(x_center+5,y_fix+5),(255,0,0),4)   #### 센터 사각형 긋기
 
-        print(f"왼쪽 : {x_left}, 가운데 : {x_center}, 오른쪽 {x_right}")
+        # print(f"왼쪽 : {x_left}, 가운데 : {x_center}, 오른쪽 {x_right}")
 
         angle = (x_center-roi_x)/((1280-roi_x*2))  ## 잘린 화면 기준으로 x가 840이 나옴 x_center가 화면의 가운데면 0.5가 나옴
         ## angle은 x센터 기준으로 잡았을 때 화면 왼쪽 끝에서 오른쪽 끝으로 1차 함수로 만들었음
-        #angle = ()
         
 
         if  0<= angle < 0.5:
-            #speed = 1800 * angle + 300 # 1200
+            speed = 1800 * angle + 300 # 1200
             #speed = 3400 * angle + 300  # 2000
-            speed = 5400 * angle + 300 # 3000
+            #speed = 5400 * angle + 300 # 3000
         elif angle <=1:
-            #speed = -1800 * angle + 2100
+            speed = -1800 * angle + 2100
             #speed = 3400 * angle + 300
-            speed = -5400 * angle + 5700
+            #speed = -5400 * angle + 5700
         else:
             speed = 300
-        #print(new_angle)
-        print("angle : ",angle)
+
+        
+        # print("angle : ",angle)
+
+
+
         #### publish하기
         self.PubAngle.publish(angle)
         self.PubSpeed.publish(speed)        
         self.PubCam1.publish(self.cv_bridge.cv2_to_imgmsg(image_original,"rgb8"))
+        #self.PubControl.publish()
 
 
         ##### 이미지 보기 #####
@@ -354,9 +369,11 @@ class Cam_lane():
         cv2.imshow("image_roi",image_Edgeroi)
         #cv2.imshow("image_warp",image_warp)
         cv2.waitKey(1)
-    
+
     def CamShutdown(self):
         print("Cam is Dead!")
+    
+    
 
 
 class MovingAverage ():
