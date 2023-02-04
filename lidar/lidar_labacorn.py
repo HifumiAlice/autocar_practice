@@ -24,9 +24,9 @@ class lidar():
         #### 변수 설정
         ### 라이다 값 처리 변수
         self.roi_degree_offset = 60  ### 라이다 볼 인덱스 값
-        self.infinity = float("inf")   ### inf는 뭐 정의가 되어있어 가능하다고 함
-        self.search_distance = 1.5
-        self.Same_distance = 0.20
+        self.infinity = float("inf") ### inf는 뭐 정의가 되어있어 가능하다고 함
+        self.search_distance = 1.5   ### 내가 확인할 거리
+        self.Same_distance = 0.20    ### 같은 물체인지 판별할 거리
         self.obs_exist_flag = False
 
         rospy.on_shutdown(self.lidar_shutdown)
@@ -58,14 +58,14 @@ class lidar():
             right_roi_lidar.append([i, data.angle_min + i * angle_increment, j, data.ranges[i]]) ## origin index, theta, angle, distance    # 가운데 기준으로 오른쪽은 +angle로 지정
             j -= 1
 
-        roi_lidar = right_roi_lidar + left_roi_lidar  ## origin index, theta, angle, distance
+        roi_lidar = right_roi_lidar + left_roi_lidar  ## [origin index, theta, angle, distance] --> 차량 전면기준 오른쪽부터 저장
         
         for i in range(len(roi_lidar)):
-            if roi_lidar[i][3] > 1.5 :
+            if roi_lidar[i][3] > self.search_distance : # 내가 확인할 거리보다 멀면 inf로 정의
                 roi_lidar[i][3] = self.infinity
             else:  ## 물체가 하나라도 limit distance 이내라면 물체가 있다고 판단
                 count += 1
-            # print(f"{roi_lidar[i][2]}도는 index : {roi_lidar[i][0]}, 거리 : {roi_lidar[i][3]} ")
+            print(f"{roi_lidar[i][2]}도는 index : {roi_lidar[i][0]}, 거리 : {roi_lidar[i][3]} ")
         #print("다음")
 
         speed = 1000
@@ -75,7 +75,7 @@ class lidar():
 
         if obs_exist_flag :  # 물체가 하나라도 인식되면 참
 
-            groupdata = self.grouping(roi_lidar)   ## grouping한 리스트 각각의 리스트 요소는 roi lidar index
+            groupdata = self.grouping(roi_lidar)            ## grouping한 리스트 각각의 리스트 요소는 roi lidar index
             mgrpData = self.mergeObs(roi_lidar,groupdata)   ## 진짜로 같은 물첸지 다른 물첸지 판단까지함 각각의 리스트 요소는 roi lidar index
             # print(f"그룹된 갯수: {len(groupdata)}")
             # print("최종 그룹 갯수:",len(mgrpData))
@@ -83,17 +83,17 @@ class lidar():
             # print("다음")
 
         #### 라바콘 판단 시작
-            # angle = self.labacorn(roi_lidar,mgrpData)
-            # if  0<= angle < 0.5:
-            #     speed = 1000 * angle + 200 # 1200
-            #     #speed = 3400 * angle + 300  # 2000
-            #     #speed = 5400 * angle + 300 # 3000
-            # elif angle <=1:
-            #     speed = -1000 * angle + 1200
-            #     #speed = 3400 * angle + 300
-            #     #speed = -5400 * angle + 5700
-            # else:
-            #     speed = 300
+            angle = self.labacorn(roi_lidar,mgrpData)
+            if  0<= angle < 0.5:
+                speed = 1200 * angle + 100 # 700
+                #speed = 3400 * angle + 300  # 2000
+                #speed = 5400 * angle + 300 # 3000
+            elif angle <=1:
+                speed = -1200 * angle + 1300
+                #speed = 3400 * angle + 300
+                #speed = -5400 * angle + 5700
+            else:
+                speed = 300
 
         #### 라바콘 판단 끝
 
@@ -156,14 +156,14 @@ class lidar():
                 idx2_xy = calc_axis_xy(tmp_g1[1], tmp_g1[3], 0, self.search_distance) # 세타, 인식된 거리, 최소거리, 물체를 찾기 위한 최대거리  --> x,y좌표를 반환 받음
                 distance = calc_distance(idx1_xy, idx2_xy) ## 각각의 물체끼리의 거리를 구함
 
-                if abs(distance) > self.Same_distance : ## 구한 거리가 같은 물체의 임계값을 넘어가면 다른 물체가 맞고 아니면 같은 물체에 i값 넣기 / 거리 0.12m
+                if abs(distance) > self.Same_distance : ## 구한 거리가 같은 물체의 임계값을 넘어가면 다른 물체가 맞고 아니면 같은 물체에 i값 넣기 / 거리 0.20m
                     #print("여기 들어오니?",distance)
                     continue
                 # print("first : ",tmpgdata)
-                tmpgdata = tmpgdata + gdata[j] 
+                tmpgdata = tmpgdata + gdata[j]   ### 같은 물체로 판단되면 같은 list에 저장
                 # print("second : ",tmpgdata) 
          
-            for k in range(len(mgrpData)):
+            for k in range(len(mgrpData)):  ## 이미 저장한 list인지 판별 
                 tmp_pop0 = mgrpData[k].copy()
                 tmp_pop1 = tmpgdata.copy()
                 
@@ -186,10 +186,11 @@ class lidar():
         idx1_xy = calc_axis_xy(tmp_g0[1],tmp_g0[3],0,self.search_distance) # 오른쪽 처음 물체의 마지막 index의 x,y좌표
         idx2_xy = calc_axis_xy(tmp_g1[1],tmp_g1[3],0,self.search_distance) # 왼쪽 처음 물체의 첫 index의 x,y좌표
         
-        position = idx1_xy[1] + idx2_xy[1]
-        angle = position + 0.5
+        position = idx1_xy[1] + idx2_xy[1]  ### 물체의 y로 각도 판별 --> 라이다가 뒤쪽을 기준으로 잡고 있어서 y가 좌우 x가 상하임
+        angle = (position * 0.3849001794597506 ) + 0.5    #  (position+0.75)*2/3 <-- 최대값을 각도로만 계산 /// (position * 0.3849001794597506 ) + 0.5 <-- 최대값을 거리까지 계산
 
         print(f"각도는 : {angle}")
+        print(f"왼쪽 idx : {mgrpdata[-1][0]} 오른쪽 idx : {mgrpdata[0][-1]}")
         return angle
          
     def lidar_shutdown(self):
