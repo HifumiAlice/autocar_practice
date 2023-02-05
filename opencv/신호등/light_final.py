@@ -79,7 +79,7 @@ class Cam_light():
         red_upper = np.array([deg * 30, 255, 255])  # deg * 30, 255,255
         mask_red = cv2.inRange(image_hsv_roi,red_lower,red_upper)
         result_red = cv2.bitwise_and(image_roi,image_roi,mask = mask_red)
-        red_color = round(result_red.mean(),3)
+        red_color = round(result_red.mean(),3)  ## 정확히는 모르겠지만 내가 지정한 색깔 범위에 인식이 되면 값이 나타남 mean을 통해 값을 확인
         
         # 초록색 따기
         green_lower = np.array([deg * 90, 100, 80])  # deg * 90, 100,80

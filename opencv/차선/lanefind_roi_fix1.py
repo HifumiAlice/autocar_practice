@@ -51,7 +51,8 @@ class Cam_lane():
 
     
     def callback(self,data):
-
+        
+        ### 트랙바 시작
         ##### 트랙바 생성 ####
         if self.Trackbar == False:
             cv2.namedWindow("Trackbar",cv2.WINDOW_NORMAL)
@@ -88,6 +89,11 @@ class Cam_lane():
 
         N = cv2.getTrackbarPos("N","line")
         self.line_find = cv2.getTrackbarPos("linefind","line")
+
+        ########## 최적의 값 찾으면 상수값 넣으면 됨
+        ########## 실전때는 지움
+        ### 트랙바 끝
+
         ##### 이미지 변환하기
         try:
             cv2_image = self.cv_bridge.compressed_imgmsg_to_cv2(data)
@@ -110,13 +116,13 @@ class Cam_lane():
         #### 잘린 화면에서 차선 딴거 원 화면에 그릴려고 변수 만듬
         roi_y = 450 # 450 
         roi_x = 220 # 220
-        image_Edgeroi = image_edge[roi_y:720,roi_x:1280-roi_x] #[400:720,:] 
-        image_Edgeroi = cv2.Canny(np.uint8(image_Edgeroi),CanThre1,CanThre2)        
+        image_Edgeroi = image_edge[roi_y:720,roi_x:1280-roi_x] #[400:720,:] ## roi로 내가 원하는 차선만 확인
+        image_Canny = cv2.Canny(np.uint8(image_Edgeroi),CanThre1,CanThre2)        
         #print(image_roi.shape)
         
         ######### 차선 라인 따기
 
-        all_lines = cv2.HoughLinesP(image_Edgeroi,1,np.pi/180,Hough_Thre,Hough_MinLen,Hough_MinGap)  ## 1차로 주행 하려면 min_gap를 1로 해야 잘됨
+        all_lines = cv2.HoughLinesP(image_Canny,1,np.pi/180,Hough_Thre,Hough_MinLen,Hough_MinGap)  ## 1차로 주행 하려면 min_gap를 1로 해야 잘됨
 
         # for line in all_lines:
         #     #line_img = cv2_image.copy()
@@ -128,7 +134,7 @@ class Cam_lane():
         new_lines = []
         seta = []
 
-        if type(all_lines) == type(None):  #### 라인 그릴거 없으면 그냥 넘기기
+        if type(all_lines) == type(None):  #### 라인 그릴거 없으면 그냥 넘기기 --> 이 조건문 안쓰면 차선 안잡히는 곳에서는 카메라가 먹통됨
             pass
         else:
             #if all_lines.all:            
@@ -149,7 +155,7 @@ class Cam_lane():
                 #     new_lines.append(line[0])               
                 #     seta.append(deg)
                 
-                if 22 <= abs(deg) :   ### 각도로 차선 골라내기
+                if 22 <= abs(deg) :   ### 각도로 차선 골라내기 22도보다 크면 정지
                     slopes.append(slope)
                     new_lines.append(line[0])               
                     seta.append(deg)
@@ -165,7 +171,8 @@ class Cam_lane():
 
             x1,y1, x2,y2 = Line
 
-            if (slope < 0) and (x2 < (1280-roi_x*2)/2):     ## 가운데 기준으로 왼쪽 차선 구하기
+            ## x축도 잘라서 차선을 구했기에 자른만큼 계산해줘야함
+            if (slope < 0) and (x2 < (1280-roi_x*2)/2):     ## 가운데 기준으로 왼쪽 차선 구하기  
                 left_lines.append([Line.tolist()])
                 #print(f"왼쪽 {j}번쨰 기울기 {slope}")
 
@@ -181,7 +188,7 @@ class Cam_lane():
         for line in left_lines:  #파란색 차선
             #line_img = cv2_image.copy()
     
-            if all(line[0]):
+            if all(line[0]):  ### 그릴거 있으면 그려라
                 x1,y1, x2,y2 = line[0]            
                 cv2.line(image_original,(x1+roi_x,y1+roi_y),(x2+roi_x,y2+roi_y),(255,0,0),3) ## 그릴거 있으면 이미지에 그리기
             # else:
@@ -229,7 +236,7 @@ class Cam_lane():
             
         else:      ## 0이 아니면 라인을 찾았다는 것이므로 라인에서 차선 그리기                
             x1 = int((0.0 - b_left)/ m_left)
-            x2 = int((720-roi_y-b_left)/m_left)
+            x2 = int((720-roi_y-b_left)/m_left)  ## 720은 카메라 해상도의 따라서 바꿔줘야함 --> 1280 x 720 해상도 사용중임
             cv2.line(image_original,(x1+roi_x,0+roi_y),(x2+roi_x,roi_y+720-roi_y),(0,255,0),2)
         
 
@@ -278,7 +285,7 @@ class Cam_lane():
             x_left = self.prev_l_mv.get_mm()
             
         else:
-            x_left = int ((y_height-b_left)/m_left)  # y가 어딘가부터 720임 140에서 빼니깐 아래 사각형 그릴때도 참고 해야함
+            x_left = int ((y_height-b_left)/m_left)  # y가 위쪽 어딘가(roi해서)부터 720임 140에서 빼니깐 아래 사각형 그릴때도 참고 해야함
             #print((y_height-b_left)/m_left)
         
         if m_right == 0.0:
@@ -294,7 +301,7 @@ class Cam_lane():
         #### 차선 각도 계산 사각형 그리기?
         y_fix = int(720 - ((720-roi_y) - y_height))
         cv2.line(image_original,(0,y_fix),(1280,y_fix),(255,55,255),2)     #### x축의 평행한 직선 그리기 여기축 기준에서 각도 잡을거임  (기준축이라고 하자)
-        cv2.rectangle(image_original,(640-5,y_fix-5),(640+5,y_fix+5),(0,0,255),4) # 카메라의 센터 그리기, 기준축에 x좌표 센터를 그림ㅁ  # 원화면에 그린거라 맞음
+        cv2.rectangle(image_original,(640-5,y_fix-5),(640+5,y_fix+5),(0,0,255),4) # 카메라의 센터 그리기, 기준축에 x좌표 센터를 그림  # 원화면에 그린거라 맞음
         
 
         #### 차선 각도 계산 사각형 그리기?
@@ -339,7 +346,7 @@ class Cam_lane():
         ## angle은 x센터 기준으로 잡았을 때 화면 왼쪽 끝에서 오른쪽 끝으로 1차 함수로 만들었음
         
 
-        if  0<= angle < 0.5:
+        if  0<= angle < 0.5: #각도에 따라서 속도 변환
             speed = 1800 * angle + 300 # 1200
             #speed = 3400 * angle + 300  # 2000
             #speed = 5400 * angle + 300 # 3000
@@ -376,7 +383,7 @@ class Cam_lane():
     
 
 
-class MovingAverage ():
+class MovingAverage ():  ### 대표 차선구할때 사용
 
     def __init__(self,n):
         self.samples = n
